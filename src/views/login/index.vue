@@ -9,30 +9,33 @@
                 <span class="titleLogin">用户登录</span>
             </div>
             <el-form class="elForm" ref="form" :rules="rules" :model="form" label-width="0px">
-                <el-form-item>
+                <el-form-item prop="phone">
                     <el-input placeholder="请输入手机号" prefix-icon="el-icon-user" v-model="form.phone"></el-input>
                 </el-form-item>
                 <el-form-item prop="password">
                     <el-input placeholder="请输入密码" prefix-icon="el-icon-lock" v-model="form.password"></el-input>
                 </el-form-item>
-                <el-form-item prop="captchaCode">
+                <el-form-item prop="code">
                     <el-row>
                         <el-col :span="16">
-                            <el-input placeholder="请输入验证码" prefix-icon="el-icon-key" v-model="form.captchaCode">
+                            <el-input placeholder="请输入验证码" prefix-icon="el-icon-key" v-model="form.code">
                             </el-input>
                         </el-col>
                         <el-col :span="8">
-                            <img class="captcha" src="../../assets/login_captcha.png" alt="">
+                            <img class="captcha" :src="imgUrl" @click="imgClick" alt="">
                         </el-col>
                     </el-row>
                 </el-form-item>
                 <el-form-item prop="isCheck" class="checkboxText">
-                    <el-checkbox v-model="form.isCheck">
-                        我已阅读并同意
-                        <el-link type="primary">用户协议</el-link>
-                        和
-                        <el-link type="primary">隐私条款</el-link>
-                    </el-checkbox>
+                    <el-checkbox-group v-model="form.isCheck">
+                        <!-- isCheck 里面写什么, label 对应写什么,就会选择指定的多选框 -->
+                        <el-checkbox label="yes">
+                            我已阅读并同意
+                            <el-link type="primary">用户协议</el-link>
+                            和
+                            <el-link type="primary">隐私条款</el-link>
+                        </el-checkbox>
+                    </el-checkbox-group>
                 </el-form-item>
                 <el-form-item>
                     <el-button class="btnWitgh" type="primary" @click="onSubmit">登录</el-button>
@@ -49,17 +52,30 @@
     </div>
 </template>
 <script>
+    // 导入组件
     import register from './componets/register'
+    // @ 表示 src 这个根目录
+    // 导入验证规则
+    import { checkPhone } from '@/utils/myCheck'
+    // 导入api方法
+    import { apiLogin } from '@/api/login'
+    // 导入token 方法
+    import { setToken } from '@/utils/mytoken'
     export default {
         data() {
             return {
                 form: {
-                    phone: "",
-                    password: "",
-                    captchaCode: "",
-                    isCheck: []
+                    // 为了避免频繁输入, 这里先把超级管理员账号写死了
+                    phone: "18511111111",
+                    password: "12345678",
+                    code: "",
+                    isCheck: ['yes']
                 },
                 rules: {
+                    phone: [
+                        { required: true, message: '请输入手机号码', trigger: 'blur' },
+                        { validator: checkPhone, trigger: 'blur' }
+                    ],
                     password: [
                         {
                             required: true,
@@ -73,7 +89,7 @@
                             trigger: "blur"
                         }
                     ],
-                    captchaCode: [
+                    code: [
                         {
                             required: true,
                             message: "请输入验证码",
@@ -89,18 +105,35 @@
                     isCheck: [
                         { type: 'array', required: true, message: '请同意协议', trigger: 'change' }
                     ],
-                }
+                },
+                // 验证码路径
+                imgUrl: process.env.VUE_APP_URL + '/captcha?type=login&t=' + Date.now()
             };
         },
         methods: {
+            // 点击登录按钮
             onSubmit() {
                 this.$refs.form.validate(valid => {
                     // window.console.log(valid);
                     if (valid) {
                         // alert('验证成功')
-                        this.$message({
-                            message: '验证成功',
-                            type: 'success'
+                        apiLogin({
+                            phone: this.form.phone,
+                            password: this.form.password,
+                            code: this.form.code
+                        }).then(res => {
+                            // window.console.log(res);
+                            if (res.data.code == 200) {
+                                this.$message.success('登录成功')
+                                // 把返回的token保存到本地存储里面
+                                // localStorage.setItem('heimamm',res.data.data.token)
+                                window.console.log(res.data.data.token);
+                                setToken(res.data.data.token)
+                                // 跳转到首页
+                                this.$router.push('/index')
+                            } else {
+                                this.$message.error(res.data.message)
+                            }
                         })
                     } else {
                         // alert('验证失败')
@@ -108,8 +141,15 @@
                     }
                 })
             },
+            // 点击注册按钮
             toRegister() {
                 this.$refs.register.dialogFormVisible = true;
+            },
+            // 点击图片刷新验证码
+            imgClick() {
+                // alert(11)
+                // 注意要带时间戳
+                this.imgUrl = process.env.VUE_APP_URL + '/captcha?type=login&t=' + Date.now()
             }
         },
         components: {

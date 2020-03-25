@@ -4,9 +4,10 @@
     </div>
 </template>
 <script>
-    export default {};
+    export default {
+    };
 </script>
 <style>
-@import url('./css/index.css');
+@import url('./style/index.css');
 
 </style>
